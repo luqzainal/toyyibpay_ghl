@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-# toyyibpay_ghl
-ToyyibPay GHL Plugin
-=======
+
 # GHL ToyyibPay Integration
 
 <p align="center">
