@@ -7,6 +7,7 @@ use App\Services\GHLService;
 use App\Services\KeyGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
@@ -24,7 +25,7 @@ class GHLController extends Controller
     /**
      * Handle OAuth callback from GHL.
      */
-    public function handleOAuthCallback(Request $request): JsonResponse
+    public function handleOAuthCallback(Request $request): RedirectResponse
     {
         $validator = Validator::make($request->all(), [
             'code' => 'required|string',
@@ -36,11 +37,9 @@ class GHLController extends Controller
                 'errors' => $validator->errors()->toArray(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid callback parameters',
-                'errors' => $validator->errors(),
-            ], 400);
+            return redirect('/install-failure')->with([
+                'error' => 'Invalid callback parameters: ' . $validator->errors()->first()
+            ]);
         }
 
         try {
@@ -48,27 +47,37 @@ class GHLController extends Controller
             $tokenData = $this->ghlService->exchangeCodeForToken($request->input('code'));
 
             if (!$tokenData) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to exchange authorization code for token',
-                ], 400);
+                return redirect('/install-failure')->with([
+                    'error' => 'Failed to exchange authorization code for token'
+                ]);
             }
 
-            // Get location info to identify the location
-            $locationInfo = $this->ghlService->getLocationInfo(
-                $tokenData['access_token'],
-                $tokenData['locationId'] ?? $tokenData['location_id'] ?? null
-            );
+            // First try to get locationId from token response
+            $locationId = $tokenData['locationId'] ?? $tokenData['location_id'] ?? null;
+            $companyId = $tokenData['companyId'] ?? $tokenData['company_id'] ?? null;
 
-            if (!$locationInfo) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to retrieve location information',
-                ], 400);
+            // If locationId is not in token response, get installed locations
+            if (!$locationId) {
+                $installedLocations = $this->ghlService->getInstalledLocations($tokenData['access_token']);
+
+                if (!$installedLocations || empty($installedLocations['locations'])) {
+                    return redirect('/install-failure')->with([
+                        'error' => 'Failed to retrieve location information'
+                    ]);
+                }
+
+                // Get the first location (assuming single location OAuth)
+                $firstLocation = $installedLocations['locations'][0];
+                $locationId = $firstLocation['id'] ?? $firstLocation['locationId'];
+                $companyId = $firstLocation['companyId'] ?? $firstLocation['company_id'];
             }
 
-            $locationId = $locationInfo['id'] ?? $locationInfo['locationId'];
-            $companyId = $locationInfo['companyId'] ?? $locationInfo['company_id'];
+            // Validate that we have the required information
+            if (!$locationId) {
+                return redirect('/install-failure')->with([
+                    'error' => 'Failed to retrieve location information - locationId not found'
+                ]);
+            }
 
             // Generate unique API key for this location
             $apiKey = $this->keyGenerator->generateUniqueKey($locationId);
@@ -91,13 +100,9 @@ class GHLController extends Controller
                 'company_id' => $companyId,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Integration created successfully',
-                'data' => [
-                    'location_id' => $locationId,
-                    'api_key' => $apiKey,
-                ],
+            return redirect('/install-success')->with([
+                'location_id' => $locationId,
+                'message' => 'Integration installed successfully! You can now configure your ToyyibPay settings.'
             ]);
 
         } catch (\Exception $e) {
@@ -106,10 +111,9 @@ class GHLController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal server error during OAuth callback',
-            ], 500);
+            return redirect('/install-failure')->with([
+                'error' => 'Internal server error during OAuth callback'
+            ]);
         }
     }
 
@@ -391,5 +395,121 @@ class GHLController extends Controller
             'success' => false,
             'message' => 'Query endpoint - verification only',
         ]);
+    }
+
+    /**
+     * Get integration configuration for GHL Sub-Account tab.
+     */
+    public function getIntegrationConfig(Request $request): JsonResponse
+    {
+        $locationId = $request->input('location_id') ?? $request->query('locationId');
+
+        if (!$locationId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Location ID is required',
+            ], 400);
+        }
+
+        try {
+            $integration = Integration::where('location_id', $locationId)
+                ->where('is_active', true)
+                ->with('toyyibPayConfig')
+                ->first();
+
+            $isConfigured = $integration && $integration->toyyibPayConfig && $integration->toyyibPayConfig->is_configured;
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'name' => 'ToyyibPay',
+                    'description' => 'Malaysian online payment gateway',
+                    'is_configured' => $isConfigured,
+                    'status' => $isConfigured ? 'connected' : 'not_configured',
+                    'config_url' => url('/config?location_id=' . $locationId),
+                    'logo_url' => url('/images/toyyibpay-logo.png'),
+                    'provider_type' => 'payment_gateway',
+                    'supported_currencies' => ['MYR'],
+                    'supported_countries' => ['MY'],
+                    'features' => [
+                        'online_banking',
+                        'e_wallet',
+                        'credit_card',
+                        'debit_card'
+                    ],
+                    'last_updated' => $integration?->updated_at?->toISOString(),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::channel('ghl_transactions')->error('Get integration config failed', [
+                'location_id' => $locationId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve integration configuration',
+            ], 500);
+        }
+    }
+
+    /**
+     * Auto-register integration when accessed from GHL.
+     */
+    public function autoRegisterIntegration(Request $request): JsonResponse
+    {
+        $locationId = $request->input('location_id') ?? $request->query('locationId');
+
+        if (!$locationId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Location ID is required',
+            ], 400);
+        }
+
+        try {
+            // Check if integration already exists
+            $integration = Integration::where('location_id', $locationId)->first();
+
+            if (!$integration) {
+                // Create basic integration record
+                $integration = Integration::create([
+                    'location_id' => $locationId,
+                    'is_active' => true,
+                    'installed_at' => now(),
+                ]);
+            }
+
+            // Try to register as payment provider if not already registered
+            if (!$integration->provider_registered) {
+                $registered = $this->ghlService->registerPaymentProvider($integration);
+
+                if ($registered) {
+                    $integration->update(['provider_registered' => true]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Integration registered successfully',
+                'data' => [
+                    'location_id' => $locationId,
+                    'status' => 'registered',
+                    'config_url' => url('/config?location_id=' . $locationId),
+                ],
+            ]);
+
+        } catch (\Exception $e) {
+            Log::channel('ghl_transactions')->error('Auto registration failed', [
+                'location_id' => $locationId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to register integration',
+            ], 500);
+        }
     }
 }

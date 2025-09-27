@@ -16,24 +16,24 @@ class Transaction extends Model
      * The attributes that are mass assignable.
      */
     protected $fillable = [
-        'location_id',
-        'ghl_order_id',
-        'ghl_transaction_id',
-        'toyyibpay_billcode',
-        'toyyibpay_bill_id',
+        'locationId',
+        'ghlOrderId',
+        'ghlTransactionId',
+        'toyyibpayBillcode',
+        'toyyibpayBillId',
         'amount',
         'currency',
         'description',
-        'customer_name',
-        'customer_email',
-        'customer_phone',
+        'customerName',
+        'customerEmail',
+        'customerPhone',
         'status',
         'environment',
-        'toyyibpay_callback_at',
-        'ghl_notified_at',
-        'toyyibpay_request_data',
-        'toyyibpay_response_data',
-        'ghl_webhook_data',
+        'toyyibpayCallbackAt',
+        'ghlNotifiedAt',
+        'toyyibpayRequestData',
+        'toyyibpayResponseData',
+        'ghlWebhookData',
     ];
 
     /**
@@ -41,11 +41,11 @@ class Transaction extends Model
      */
     protected $casts = [
         'amount' => 'decimal:2',
-        'toyyibpay_callback_at' => 'datetime',
-        'ghl_notified_at' => 'datetime',
-        'toyyibpay_request_data' => 'array',
-        'toyyibpay_response_data' => 'array',
-        'ghl_webhook_data' => 'array',
+        'toyyibpayCallbackAt' => 'datetime',
+        'ghlNotifiedAt' => 'datetime',
+        'toyyibpayRequestData' => 'array',
+        'toyyibpayResponseData' => 'array',
+        'ghlWebhookData' => 'array',
     ];
 
     /**
@@ -69,7 +69,7 @@ class Transaction extends Model
      */
     public function integration(): BelongsTo
     {
-        return $this->belongsTo(Integration::class, 'location_id', 'location_id');
+        return $this->belongsTo(Integration::class, 'locationId', 'locationId');
     }
 
     /**
@@ -117,7 +117,7 @@ class Transaction extends Model
      */
     public function scopeByLocation($query, $locationId)
     {
-        return $query->where('location_id', $locationId);
+        return $query->where('locationId', $locationId);
     }
 
     /**
@@ -151,7 +151,7 @@ class Transaction extends Model
     {
         $this->update([
             'status' => self::STATUS_COMPLETED,
-            'toyyibpay_callback_at' => now(),
+            'toyyibpayCallbackAt' => now(),
         ]);
     }
 
@@ -162,7 +162,7 @@ class Transaction extends Model
     {
         $this->update([
             'status' => self::STATUS_FAILED,
-            'toyyibpay_callback_at' => now(),
+            'toyyibpayCallbackAt' => now(),
         ]);
     }
 
@@ -179,7 +179,7 @@ class Transaction extends Model
      */
     public function markGHLNotified(): void
     {
-        $this->update(['ghl_notified_at' => now()]);
+        $this->update(['ghlNotifiedAt' => now()]);
     }
 
     /**
@@ -187,7 +187,7 @@ class Transaction extends Model
      */
     public function storeToyyibPayResponse(array $data): void
     {
-        $this->update(['toyyibpay_response_data' => $data]);
+        $this->update(['toyyibpayResponseData' => $data]);
     }
 
     /**
@@ -195,7 +195,7 @@ class Transaction extends Model
      */
     public function storeGHLWebhookData(array $data): void
     {
-        $this->update(['ghl_webhook_data' => $data]);
+        $this->update(['ghlWebhookData' => $data]);
     }
 
     /**
@@ -203,7 +203,7 @@ class Transaction extends Model
      */
     public function getPaymentUrl(): ?string
     {
-        if (empty($this->toyyibpay_billcode)) {
+        if (empty($this->toyyibpayBillcode)) {
             return null;
         }
 
@@ -211,6 +211,6 @@ class Transaction extends Model
             ? config('toyyibpay.production_url')
             : config('toyyibpay.sandbox_url');
 
-        return $baseUrl . '/' . $this->toyyibpay_billcode;
+        return $baseUrl . '/' . $this->toyyibpayBillcode;
     }
 }

@@ -6,6 +6,7 @@
     <title>ToyyibPay Configuration - {{ config('app.name') }}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
     <style>
         body {
             background-color: #f8f9fa;
@@ -154,6 +155,17 @@
                 </p>
             </div>
             <div class="card-body p-4">
+                <!-- Configuration Error Alert (from server) -->
+                @if(isset($error))
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    {{ $error }}
+                    <div class="mt-2">
+                        <small>Please access this configuration page from your GHL Sub-Account settings.</small>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Success Alert -->
                 <div id="successAlert" class="alert alert-success d-none">
                     <i class="fas fa-check-circle me-2"></i>
@@ -167,7 +179,7 @@
                 </div>
 
                 <!-- Configuration Form -->
-                <form id="configForm">
+                <form id="configForm" @if(isset($error)) style="display: none;" @endif>
                     <input type="hidden" id="locationId" name="location_id" value="{{ $location_id ?? '' }}">
                     
                     <!-- Environment Selection -->

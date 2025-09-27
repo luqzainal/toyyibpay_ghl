@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/luqma/Pictures/Screenshots/**)",
+      "Bash(php artisan make:migration:*)",
+      "Bash(composer:*)",
+      "Bash(php artisan migrate:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

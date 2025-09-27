@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+# toyyibpay_ghl
+ToyyibPay GHL Plugin
+=======
 # GHL ToyyibPay Integration
 
 <p align="center">
@@ -210,3 +214,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 <p align="center">
   Made with ❤️ for the Malaysian business community
 </p>
+>>>>>>> 83dbd2b (first commit)

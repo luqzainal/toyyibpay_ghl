@@ -11,36 +11,36 @@ class ToyyibPayConfig extends Model
     /**
      * The table associated with the model.
      */
-    protected $table = 'toyyibpay_config';
+    protected $table = 'toyyibpay_configs';
 
     /**
      * The attributes that are mass assignable.
      */
     protected $fillable = [
-        'location_id',
-        'secret_key_live',
-        'category_code_live',
-        'secret_key_sandbox',
-        'category_code_sandbox',
-        'mode_active',
-        'is_configured',
-        'configured_at',
+        'locationId',
+        'secretKeyLive',
+        'categoryCodeLive',
+        'secretKeySandbox',
+        'categoryCodeSandbox',
+        'modeActive',
+        'isConfigured',
+        'configuredAt',
     ];
 
     /**
      * The attributes that should be cast.
      */
     protected $casts = [
-        'is_configured' => 'boolean',
-        'configured_at' => 'datetime',
+        'isConfigured' => 'boolean',
+        'configuredAt' => 'datetime',
     ];
 
     /**
      * The attributes that should be encrypted.
      */
     protected $encrypted = [
-        'secret_key_live',
-        'secret_key_sandbox',
+        'secretKeyLive',
+        'secretKeySandbox',
     ];
 
     /**
@@ -70,7 +70,7 @@ class ToyyibPayConfig extends Model
      */
     public function integration(): BelongsTo
     {
-        return $this->belongsTo(Integration::class, 'location_id', 'location_id');
+        return $this->belongsTo(Integration::class, 'locationId', 'locationId');
     }
 
     /**
@@ -78,9 +78,9 @@ class ToyyibPayConfig extends Model
      */
     public function getActiveSecretKey(): ?string
     {
-        return $this->mode_active === 'production' 
-            ? $this->secret_key_live 
-            : $this->secret_key_sandbox;
+        return $this->modeActive === 'production'
+            ? $this->secretKeyLive
+            : $this->secretKeySandbox;
     }
 
     /**
@@ -88,9 +88,9 @@ class ToyyibPayConfig extends Model
      */
     public function getActiveCategoryCode(): ?string
     {
-        return $this->mode_active === 'production' 
-            ? $this->category_code_live 
-            : $this->category_code_sandbox;
+        return $this->modeActive === 'production'
+            ? $this->categoryCodeLive
+            : $this->categoryCodeSandbox;
     }
 
     /**
@@ -98,7 +98,7 @@ class ToyyibPayConfig extends Model
      */
     public function getApiBaseUrl(): string
     {
-        return $this->mode_active === 'production'
+        return $this->modeActive === 'production'
             ? config('toyyibpay.production_url')
             : config('toyyibpay.sandbox_url');
     }
@@ -108,11 +108,11 @@ class ToyyibPayConfig extends Model
      */
     public function isActiveModeConfigured(): bool
     {
-        if ($this->mode_active === 'production') {
-            return !empty($this->secret_key_live) && !empty($this->category_code_live);
+        if ($this->modeActive === 'production') {
+            return !empty($this->secretKeyLive) && !empty($this->categoryCodeLive);
         }
-        
-        return !empty($this->secret_key_sandbox) && !empty($this->category_code_sandbox);
+
+        return !empty($this->secretKeySandbox) && !empty($this->categoryCodeSandbox);
     }
 
     /**
@@ -120,7 +120,7 @@ class ToyyibPayConfig extends Model
      */
     public function switchToProduction(): void
     {
-        $this->update(['mode_active' => 'production']);
+        $this->update(['modeActive' => 'production']);
     }
 
     /**
@@ -128,7 +128,7 @@ class ToyyibPayConfig extends Model
      */
     public function switchToSandbox(): void
     {
-        $this->update(['mode_active' => 'sandbox']);
+        $this->update(['modeActive' => 'sandbox']);
     }
 
     /**
@@ -137,8 +137,8 @@ class ToyyibPayConfig extends Model
     public function markAsConfigured(): void
     {
         $this->update([
-            'is_configured' => true,
-            'configured_at' => now(),
+            'isConfigured' => true,
+            'configuredAt' => now(),
         ]);
     }
 
@@ -147,7 +147,7 @@ class ToyyibPayConfig extends Model
      */
     public function scopeByMode($query, $mode)
     {
-        return $query->where('mode_active', $mode);
+        return $query->where('modeActive', $mode);
     }
 
     /**
@@ -155,6 +155,6 @@ class ToyyibPayConfig extends Model
      */
     public function scopeConfigured($query)
     {
-        return $query->where('is_configured', true);
+        return $query->where('isConfigured', true);
     }
 }

@@ -123,6 +123,43 @@ class GHLService
     }
 
     /**
+     * Get installed locations for the current access token.
+     *
+     * @param string $accessToken
+     * @return array|null
+     */
+    public function getInstalledLocations(string $accessToken): ?array
+    {
+        try {
+            Log::channel('ghl_transactions')->info('Getting installed locations');
+
+            $response = $this->client->get($this->baseUrl . '/oauth/installedLocations', [
+                'headers' => [
+                    'Authorization' => "Bearer {$accessToken}",
+                    'Accept' => 'application/json',
+                    'Version' => '2021-07-28',
+                ],
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            Log::channel('ghl_transactions')->info('Installed locations retrieved successfully', [
+                'locations_count' => count($data['locations'] ?? []),
+            ]);
+
+            return $data;
+
+        } catch (GuzzleException $e) {
+            Log::channel('ghl_transactions')->error('Failed to get installed locations', [
+                'error' => $e->getMessage(),
+                'code' => $e->getCode(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
      * Get location information from GHL API.
      *
      * @param string $accessToken

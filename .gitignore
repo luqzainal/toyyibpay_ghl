@@ -24,3 +24,6 @@ Homestead.yaml
 Thumbs.db
 .txt
 env-template.txt
+progress-update.md
+.env.example
+.env.infinityfree

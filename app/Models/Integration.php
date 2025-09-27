@@ -18,31 +18,33 @@ class Integration extends Model
      * The attributes that are mass assignable.
      */
     protected $fillable = [
-        'location_id',
-        'company_id',
-        'access_token',
-        'refresh_token',
-        'api_key',
-        'installed_at',
-        'uninstalled_at',
-        'is_active',
+        'locationId',
+        'companyId',
+        'accessToken',
+        'refreshToken',
+        'apiKey',
+        'installedAt',
+        'uninstalledAt',
+        'isActive',
+        'providerRegistered',
     ];
 
     /**
      * The attributes that should be cast.
      */
     protected $casts = [
-        'installed_at' => 'datetime',
-        'uninstalled_at' => 'datetime',
-        'is_active' => 'boolean',
+        'installedAt' => 'datetime',
+        'uninstalledAt' => 'datetime',
+        'isActive' => 'boolean',
+        'providerRegistered' => 'boolean',
     ];
 
     /**
      * The attributes that should be encrypted.
      */
     protected $encrypted = [
-        'access_token',
-        'refresh_token',
+        'accessToken',
+        'refreshToken',
     ];
 
     /**
@@ -72,7 +74,7 @@ class Integration extends Model
      */
     public function toyyibPayConfig(): HasOne
     {
-        return $this->hasOne(ToyyibPayConfig::class, 'location_id', 'location_id');
+        return $this->hasOne(ToyyibPayConfig::class, 'locationId', 'locationId');
     }
 
     /**
@@ -80,7 +82,7 @@ class Integration extends Model
      */
     public function transactions(): HasMany
     {
-        return $this->hasMany(Transaction::class, 'location_id', 'location_id');
+        return $this->hasMany(Transaction::class, 'locationId', 'locationId');
     }
 
     /**
@@ -88,7 +90,7 @@ class Integration extends Model
      */
     public function scopeActive($query)
     {
-        return $query->where('is_active', true);
+        return $query->where('isActive', true);
     }
 
     /**
@@ -96,7 +98,7 @@ class Integration extends Model
      */
     public function scopeByLocation($query, $locationId)
     {
-        return $query->where('location_id', $locationId);
+        return $query->where('locationId', $locationId);
     }
 
     /**
@@ -104,10 +106,10 @@ class Integration extends Model
      */
     public function isConfigured(): bool
     {
-        return !empty($this->access_token) 
-            && !empty($this->refresh_token) 
-            && !empty($this->api_key)
-            && $this->is_active;
+        return !empty($this->accessToken)
+            && !empty($this->refreshToken)
+            && !empty($this->apiKey)
+            && $this->isActive;
     }
 
     /**
@@ -116,9 +118,9 @@ class Integration extends Model
     public function markAsInstalled(): void
     {
         $this->update([
-            'installed_at' => now(),
-            'uninstalled_at' => null,
-            'is_active' => true,
+            'installedAt' => now(),
+            'uninstalledAt' => null,
+            'isActive' => true,
         ]);
     }
 
@@ -128,8 +130,8 @@ class Integration extends Model
     public function markAsUninstalled(): void
     {
         $this->update([
-            'uninstalled_at' => now(),
-            'is_active' => false,
+            'uninstalledAt' => now(),
+            'isActive' => false,
         ]);
     }
 }
